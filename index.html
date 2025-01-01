@@ -9,12 +9,41 @@
             font-family: sans-serif;
             margin: 0;
             display: flex;
+            flex-direction: column;
             min-height: 100vh;
         }
 
+        header {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header .user-info {
+            font-size: 14px;
+        }
+
+        header button {
+            padding: 5px 10px;
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
         aside {
-            width: 250px;
-            background-color: #f0f0f0;
+            width: 300px;
+            background-color: #f9f9f9;
             padding: 20px;
             overflow-y: auto;
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
@@ -31,13 +60,9 @@
         }
 
         aside ul li {
-            padding: 8px 0;
+            padding: 10px;
             border-bottom: 1px solid #ddd;
             cursor: pointer;
-        }
-
-        aside ul li:last-child {
-            border-bottom: none;
         }
 
         aside ul li:hover {
@@ -49,19 +74,20 @@
             padding: 20px;
             display: flex;
             flex-direction: column;
+            overflow-y: auto;
         }
 
         #journal-editor {
-            margin-bottom: 20px;
+            margin-top: 20px;
         }
 
         textarea {
             width: 100%;
             height: 300px;
             padding: 10px;
-            margin-bottom: 10px;
             box-sizing: border-box;
             border: 1px solid #ccc;
+            border-radius: 4px;
         }
 
         button {
@@ -83,51 +109,32 @@
         .hidden {
             display: none;
         }
-
-        #user-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #f9f9f9;
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-        }
-
-        #user-details {
-            font-size: 14px;
-        }
-
-        #sign-out-button {
-            padding: 5px 10px;
-            background-color: #ff4d4d;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 4px;
-        }
     </style>
 </head>
 <body>
+
+<header id="user-info" class="hidden">
+    <div class="user-info" id="user-details"></div>
+    <button id="sign-out-button">Sign Out</button>
+</header>
 
 <div id="sign-in-container">
     <button id="sign-in-button">Sign in with Google</button>
 </div>
 
-<div class="hidden" id="user-info">
-    <div id="user-details"></div>
-    <button id="sign-out-button">Sign Out</button>
+<div class="container hidden" id="main-container">
+    <aside id="journal-nav">
+        <h2 id="month-name">Month</h2>
+        <ul id="entry-list"></ul>
+    </aside>
+    <main id="journal-main">
+        <div id="journal-editor">
+            <textarea id="journal-text" placeholder="Write your journal entry here..."></textarea>
+            <button id="save-button">Save Entry</button>
+        </div>
+    </main>
 </div>
 
-<aside class="hidden" id="journal-nav">
-    <h2 id="month-name">Month</h2>
-    <ul id="entry-list"></ul>
-</aside>
-<main class="hidden" id="journal-main">
-    <div id="journal-editor">
-        <textarea id="journal-text"></textarea>
-        <button id="save-button">Save Entry</button>
-    </div>
-</main>
 <script type="module">
     // Import Firebase modules
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -154,6 +161,7 @@
     const userInfo = document.getElementById('user-info');
     const userDetails = document.getElementById('user-details');
     const signOutButton = document.getElementById('sign-out-button');
+    const mainContainer = document.getElementById('main-container');
     const journalNav = document.getElementById('journal-nav');
     const journalMain = document.getElementById('journal-main');
     const monthName = document.getElementById('month-name');
@@ -167,15 +175,13 @@
         if (user) {
             signInContainer.classList.add('hidden');
             userInfo.classList.remove('hidden');
-            journalNav.classList.remove('hidden');
-            journalMain.classList.remove('hidden');
+            mainContainer.classList.remove('hidden');
             userDetails.textContent = `Logged in as: ${user.displayName} (${user.email})`;
             loadEntries();
         } else {
             signInContainer.classList.remove('hidden');
             userInfo.classList.add('hidden');
-            journalNav.classList.add('hidden');
-            journalMain.classList.add('hidden');
+            mainContainer.classList.add('hidden');
         }
     });
 

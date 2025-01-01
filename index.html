@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Journal</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        aside {
+            width: 250px;
+            background-color: #f0f0f0;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        aside h2 {
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        aside ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        aside ul li {
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+        }
+
+        aside ul li:last-child {
+            border-bottom: none;
+        }
+
+        aside ul li:hover {
+            background-color: #e0e0e0;
+        }
+
+        main {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #journal-editor {
+            margin-bottom: 20px;
+            
+        }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        #sign-in-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        }
+       
+    .hidden {
+       display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="sign-in-container" >
+  <button id="sign-in-button" >Sign in with Google</button>
+</div>
+
+<aside class="hidden" id="journal-nav" >
+    <h2 id="month-name">Month</h2>
+    <ul id="entry-list"></ul>
+</aside>
+<main class="hidden" id="journal-main">
+    <div id="journal-editor">
+        <textarea id="journal-text"></textarea>
+        <button id="save-button">Save Entry</button>
+    </div>
+</main>
+<script type="module">
+    // Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, doc, getDocs, setDoc, addDoc,query,where,orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+
+    // Firebase configuration
+   const firebaseConfig = {
+    apiKey: "AIzaSyB00L-6PsCK5LMAVbUPXgNNF0BywlZKqwk",
+    authDomain: "weekly-journal-9df9c.firebaseapp.com",
+    projectId: "weekly-journal-9df9c",
+    storageBucket: "weekly-journal-9df9c.firebasestorage.app",
+    messagingSenderId: "267644429656",
+    appId: "1:267644429656:web:8a5b8a73960f9adf5af12d"
+  };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const signInButton = document.getElementById('sign-in-button');
+    const signInContainer = document.getElementById('sign-in-container');
+    const journalNav = document.getElementById('journal-nav');
+    const journalMain = document.getElementById('journal-main');
+    const monthName = document.getElementById('month-name');
+    const entryList = document.getElementById('entry-list');
+    const journalText = document.getElementById('journal-text');
+    const saveButton = document.getElementById('save-button');
+    let currentEntryId = null;
+
+   
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        signInContainer.classList.add('hidden');
+        journalNav.classList.remove('hidden');
+        journalMain.classList.remove('hidden');
+          loadEntries();
+          } else {
+        signInContainer.classList.remove('hidden');
+        journalNav.classList.add('hidden');
+        journalMain.classList.add('hidden');
+      }
+    });
+
+
+     signInButton.addEventListener('click', async () => {
+       const provider = new GoogleAuthProvider();
+       try {
+         await signInWithPopup(auth, provider);
+       } catch (error) {
+         console.error("Error signing in:", error);
+       }
+     });
+    
+    async function loadEntries() {
+      const user = auth.currentUser;
+    
+      if (!user) {
+        console.error("No user signed in.");
+        return;
+      }
+      
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.toLocaleString('default', { month: 'long' });
+      monthName.textContent = month;
+      
+      entryList.innerHTML = '';
+
+
+      const entriesRef = collection(db, 'users',user.uid, 'entries');
+      const q = query(entriesRef, where("year", "==", year), where("month", "==", month), orderBy("week"));
+      const querySnapshot = await getDocs(q);
+
+      querySnapshot.forEach((doc)=>{
+          const entry = doc.data();
+          const li = document.createElement('li');
+          li.textContent = `Week ${entry.week}`;
+          li.dataset.entryId = doc.id;
+        li.addEventListener('click', () => loadEntry(doc.id, entry.notes));
+          entryList.appendChild(li);
+
+      });
+
+    }
+     
+  async function loadEntry(entryId, entryNotes) {
+    journalText.value = entryNotes;
+     currentEntryId = entryId;
+}
+   
+
+    saveButton.addEventListener('click', async () => {
+      const user = auth.currentUser;
+      if(!user) {
+        console.error("User not signed in");
+          return;
+      }
+       const now = new Date();
+      const year = now.getFullYear();
+       const month = now.toLocaleString('default', { month: 'long' });
+       const week = getWeekNumber(now);
+      const notes = journalText.value;
+        if (currentEntryId) {
+           const entryRef = doc(db, 'users',user.uid, 'entries', currentEntryId);
+        try{
+            await setDoc(entryRef, {
+                notes: notes,
+                 year: year,
+                 month: month,
+                 week: week,
+                }, {merge: true});
+                 console.log("Entry updated")
+
+            }
+            catch(error) {
+                console.error("Error updating document:", error);
+            }
+       }else{
+            try{
+             const entryRef = collection(db, 'users',user.uid, 'entries');
+              await addDoc(entryRef, {
+               notes: notes,
+               year: year,
+               month: month,
+               week: week,
+              });
+            console.log("New entry added");
+            }
+            catch(error) {
+               console.error("Error adding documemt:", error);
+            }
+         
+       }
+        currentEntryId = null;
+    loadEntries();
+    journalText.value = "";
+
+    });
+
+
+        function getWeekNumber(d) {
+        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+        const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+        return weekNo;
+        }
+</script>
+</body>
+</html>
